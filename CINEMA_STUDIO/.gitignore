@@ -1,0 +1,15 @@
+# Mídia pesada fica fora do git (só a estrutura de pastas é versionada)
+ASSETS/footage/*
+ASSETS/music/*
+ASSETS/sound-effects/*
+ASSETS/voiceovers/*
+PROJECTS/*/footage/*
+PROJECTS/*/audio/*
+PROJECTS/*/renders/*
+EXPORTS/*/*
+
+# Remotion / Node
+node_modules/
+out/
+
+!.gitkeep
