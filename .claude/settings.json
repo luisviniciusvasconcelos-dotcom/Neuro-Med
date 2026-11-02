@@ -5,9 +5,16 @@
         "source": "github",
         "repo": "remotion-dev/claude-code-plugin"
       }
+    },
+    "ffmpeg-skill": {
+      "source": {
+        "source": "github",
+        "repo": "kajisho5/ffmpeg-skill"
+      }
     }
   },
   "enabledPlugins": {
-    "remotion@remotion": true
+    "remotion@remotion": true,
+    "ffmpeg-skill@ffmpeg-skill": true
   }
 }
