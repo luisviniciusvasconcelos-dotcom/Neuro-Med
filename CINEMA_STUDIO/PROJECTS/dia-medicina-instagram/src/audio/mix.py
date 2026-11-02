@@ -16,6 +16,8 @@ PROJ = Path(__file__).resolve().parents[2]
 AUD = PROJ / "audio"
 WORK = PROJ / "renders" / "work"
 SR = 48000
+# master EQ for phone speakers: cut sub, reduce low-end weight, add presence
+EQ = "highpass=f=35:poles=2,bass=g=-6:f=140:w=0.8,equalizer=f=2500:t=q:w=1:g=2.5"
 N = SR * 30
 
 # integrated loudness of each clip's own audio (measured with ebur128)
@@ -64,9 +66,9 @@ def main():
 
     # production sound sits under the score, comes forward in the quiet moments
     amb_gain = automation([
-        (0, -9), (2.8, -9), (3.0, -14), (8.4, -14), (8.6, -6), (9.7, -6), (9.75, -40),
-        (10.0, -40), (10.05, -13), (14.4, -13), (14.6, -5), (17.2, -5), (17.25, -40),
-        (17.5, -40), (17.55, -15), (22.9, -15), (23.0, -40), (30, -40)])
+        (0, -7), (2.8, -7), (3.0, -11), (8.4, -11), (8.6, -6), (9.7, -6), (9.75, -40),
+        (10.0, -40), (10.05, -10), (14.4, -10), (14.6, -5), (17.2, -5), (17.25, -40),
+        (17.5, -40), (17.55, -12), (22.9, -12), (23.0, -40), (30, -40)])
     amb *= amb_gain[:, None]
 
     mix = music * 0.82 + sfx * 0.55 + amb
@@ -78,13 +80,13 @@ def main():
     # two-pass loudness normalisation to -14 LUFS / -1 dBTP
     meas = subprocess.run(
         ["ffmpeg", "-hide_banner", "-i", str(raw), "-af",
-         "loudnorm=I=-14:TP=-1.0:LRA=11:print_format=json", "-f", "null", "-"],
+         f"{EQ},loudnorm=I=-14:TP=-1.0:LRA=11:print_format=json", "-f", "null", "-"],
         capture_output=True, text=True).stderr
     import json
     j = json.loads(meas[meas.rindex("{"):meas.rindex("}") + 1])
     subprocess.run([
         "ffmpeg", "-v", "error", "-y", "-i", str(raw), "-af",
-        f"loudnorm=I=-14:TP=-1.0:LRA=11:measured_I={j['input_i']}:measured_TP={j['input_tp']}:"
+        f"{EQ},loudnorm=I=-14:TP=-1.0:LRA=11:measured_I={j['input_i']}:measured_TP={j['input_tp']}:"
         f"measured_LRA={j['input_lra']}:measured_thresh={j['input_thresh']}:"
         f"offset={j['target_offset']}:linear=true,aresample=48000",
         "-c:a", "pcm_s24le", str(AUD / "mix.wav")], check=True)

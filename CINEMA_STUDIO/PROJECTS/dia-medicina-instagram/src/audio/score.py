@@ -105,8 +105,9 @@ def kick(d=0.45, f0=150, f1=44):
     f = f1 + (f0 - f1) * np.exp(-t * 28)
     ph = 2 * np.pi * np.cumsum(f) / SR
     body = np.sin(ph) * env(len(t), 0.001, 0.22)
-    click = hp(rng.standard_normal(len(t)), 3000) * env(len(t), 0, 0.006)
-    return np.tanh(1.6 * (body + 0.25 * click))
+    click = hp(rng.standard_normal(len(t)), 2500) * env(len(t), 0, 0.008)
+    knock = np.sin(2 * np.pi * 210 * t) * env(len(t), 0.001, 0.03)
+    return np.tanh(1.6 * (body + 0.55 * click + 0.45 * knock))
 
 
 def snare(d=0.35):
@@ -129,14 +130,16 @@ def tom(f=110, d=0.5):
 
 def bass_note(f, d):
     sub = np.sin(2 * np.pi * f * t_(d))
-    grit = lp(saw(f, d) + saw(f, d, 0.004), 420)
+    grit = lp(saw(f, d) + saw(f, d, 0.004), 1600)
+    upper = lp(saw(2 * f, d, 0.003), 2400)
     e = env(int(SR * d), 0.004, d * 0.8)
-    return np.tanh(1.4 * (0.9 * sub + 0.45 * grit)) * e
+    return np.tanh(1.6 * (0.5 * sub + 0.55 * grit + 0.3 * upper)) * e
 
 
 def pad(notes, d, cutoff=(500, 1800), att=0.6):
-    x = sum(saw(NOTE[n], d, dt) for n in notes for dt in (-0.006, 0.0, 0.007))
-    x = sweep_lp(x / (3 * len(notes)), *cutoff, steps=24)
+    x = sum(saw(NOTE[n] * m, d, dt) * g for n in notes for dt in (-0.006, 0.0, 0.007)
+            for m, g in ((1, 1.0), (2, 0.6)))
+    x = sweep_lp(x / (4.8 * len(notes)), cutoff[0] * 2.2, cutoff[1] * 2.2, steps=24)
     e = np.ones(len(x))
     a, r = int(att * SR), int(min(0.4, d / 3) * SR)
     e[:a] = np.linspace(0, 1, a) ** 2
@@ -146,7 +149,7 @@ def pad(notes, d, cutoff=(500, 1800), att=0.6):
 
 def braam(d=2.6, root="D2"):
     x = sum(saw(NOTE[n], d, dt) for n in (root, "A2", "D3") for dt in (-0.01, 0, 0.012))
-    x = sweep_lp(np.tanh(x * 0.6), 180, 1600, steps=20)
+    x = sweep_lp(np.tanh(x * 0.6), 300, 3800, steps=20)
     e = env(len(x), 0.02, 0.9)
     return x * e * 0.7
 
@@ -210,6 +213,12 @@ def heartbeat():
     return lp(x, 180)
 
 
+def pluck(f, d=0.25):
+    n = int(SR * d)
+    x = saw(f, d) + 0.5 * saw(2 * f, d, 0.002)
+    return lp(x, 3800) * env(n, 0.002, 0.11) * 0.5
+
+
 def bell(f, d=2.4):
     t = t_(d)
     x = (np.sin(2 * np.pi * f * t) + 0.35 * np.sin(2 * np.pi * 2 * f * t) * np.exp(-t * 3)
@@ -231,8 +240,8 @@ def mute(buf, a, b, fade=0.03):
 
 # A — intro drone 0–3
 place(music, pad(["D2", "A2", "F3"], 3.2, (250, 1400), att=0.4), 0.0, 0.55)
-place(music, bell(NOTE["A5"], 3.0) * 0.12, 0.6, pan=0.4)
-place(music, bell(NOTE["D5"], 3.0) * 0.10, 1.6, pan=-0.4)
+place(music, bell(NOTE["A5"], 3.0) * 0.3, 0.6, pan=0.4)
+place(music, bell(NOTE["D5"], 3.0) * 0.26, 1.6, pan=-0.4)
 swell = reverb(impact(1.4), 1.6, mix=0.7)[::-1] * np.linspace(0, 1, int(1.4 * SR))[:, None] ** 2
 place(music, swell, 1.6, 0.6)
 
@@ -259,7 +268,18 @@ def pads(chords, gain, cutoff):
         place(music, pad(ch, d + 0.05, cutoff, att=0.08), st, gain)
 
 
+def ostinato(chords, step, gain):
+    for st, d, ch, _ in chords:
+        f = [NOTE[n] for n in ch]
+        pat = [f[0] * 2, f[2] * 2, f[0] * 4, f[1] * 2]
+        k = 0
+        while k * step < d - 1e-6:
+            place(music, pluck(pat[k % 4]), st + k * step, gain, pan=(-0.3, 0.3)[k % 2])
+            k += 1
+
+
 # B — arrival pulse 3–8.5
+ostinato(B_CH, BEAT / 2, 0.30)
 pads(B_CH, 0.35, (700, 1500))
 bassline(B_CH, BEAT / 2, 0.42)
 for i in range(11):
@@ -267,9 +287,9 @@ for i in range(11):
     if i % 2 == 0 or t >= 5.0:
         place(drums, kick(), t, 0.85)
     if t >= 5.0:
-        place(drums, hat(), t + 0.25, 0.18, pan=0.3)
+        place(drums, hat(), t + 0.25, 0.32, pan=0.3)
     if t >= 7.0 and i % 2 == 1:
-        place(drums, reverb(snare(), 1.0, mix=0.25), t, 0.45)
+        place(drums, reverb(snare(), 1.0, mix=0.25), t, 0.7)
 
 # C — breakdown 8.5–10: filtered pad + riser, silence 9.75
 place(music, pad(["Bb2", "D3", "G3"], 1.3, (1500, 300), att=0.02), 8.5, 0.35)
@@ -277,14 +297,15 @@ place(music, bass_note(NOTE["G1"], 1.2), 8.5, 0.35)
 place(sfx, riser(1.25), 8.5, 0.35)
 
 # D — full groove 10–14.5
+ostinato(D_CH, BEAT / 2, 0.34)
 pads(D_CH, 0.38, (900, 2400))
 bassline(D_CH, BEAT / 2, 0.45)
 for i in range(9):
     t = 10.0 + i * 0.5
     place(drums, kick(), t, 0.9)
-    place(drums, hat(), t + 0.25, 0.2, pan=0.3)
+    place(drums, hat(), t + 0.25, 0.34, pan=0.3)
     if i % 2 == 1:
-        place(drums, reverb(snare(), 1.0, mix=0.25), t, 0.55)
+        place(drums, reverb(snare(), 1.0, mix=0.25), t, 0.8)
 for k, f in enumerate((140, 120, 100, 85)):
     place(drums, tom(f), 13.5 + k * 0.125 + 0.5, 0.45, pan=-0.3 + 0.2 * k) if k < 4 else None
 
@@ -292,10 +313,11 @@ for k, f in enumerate((140, 120, 100, 85)):
 place(music, pad(["D3", "F3", "A3", "E4"], 3.0, (400, 2600), att=1.2), 14.5, 0.42)
 for k in range(3):
     place(drums, heartbeat(), 14.5 + k * 1.0, 0.9)
-    place(sfx, ecg_beep(), 14.5 + k * 1.0, 0.10, pan=0.25)
+    place(sfx, ecg_beep(), 14.5 + k * 1.0, 0.22, pan=0.25)
 place(sfx, riser(1.4), 15.85, 0.5)
 
 # F — climax 17.5–23
+ostinato(F_CH, BEAT / 4, 0.32)
 pads(F_CH, 0.42, (1200, 3200))
 bassline(F_CH, BEAT / 4, 0.45)
 for i in range(22):
@@ -303,8 +325,8 @@ for i in range(22):
     if i % 2 == 0:
         place(drums, kick(), t, 0.95)
     if i % 4 == 2:
-        place(drums, reverb(snare(), 1.2, mix=0.3), t, 0.6)
-    place(drums, hat(open_=(i % 4 == 3)), t, 0.16, pan=0.3)
+        place(drums, reverb(snare(), 1.2, mix=0.3), t, 0.85)
+    place(drums, hat(open_=(i % 4 == 3)), t, 0.28, pan=0.3)
 for t in (19.0, 20.5, 21.5):
     place(drums, tom(95), t, 0.5, pan=-0.3)
 for k in range(8):  # snare roll into the final hit
@@ -316,7 +338,7 @@ for t, root in ((17.5, "D2"), (19.5, "D2"), (20.75, "G1")):
 place(music, reverb(braam(5.5, "D2"), 3.5, mix=0.5), 23.0, 0.6)
 arp = ["D4", "A4", "E5", "F5", "A4", "E5", "D5", "A4", "F4", "A4", "D5", "E5"]
 for k, n in enumerate(arp):
-    place(music, bell(NOTE[n], 2.6) * 0.22, 23.5 + k * 0.5, pan=(-0.35, 0.35)[k % 2])
+    place(music, bell(NOTE[n] * 2, 2.6) * 0.45, 23.5 + k * 0.5, pan=(-0.35, 0.35)[k % 2])
 place(music, pad(["D3", "A3", "E4", "F4"], 6.5, (900, 500), att=1.5), 23.5, 0.28)
 
 # strategic silences before impacts

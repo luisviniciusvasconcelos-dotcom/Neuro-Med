@@ -25,7 +25,7 @@ graph = (
     "[v4k]split[a][b];"
     "[b]scale=1920:1080:flags=lanczos[v1080];"
     # AAC overshoots a little: keep ~0.5 dB of true-peak headroom below -1 dBTP
-    "[2:a]volume=-0.6dB,alimiter=limit=0.8:level=false:attack=1:release=50,asplit[a1][a2]"
+    "[2:a]volume=-1dB,alimiter=limit=0.75:level=false:attack=1:release=50,asplit[a1][a2]"
 )
 master = PROJ / "renders" / f"dia-medicina_16x9_4K_master_{VER}.mp4"
 insta = PROJ / "renders" / f"dia-medicina_16x9_1080p_{VER}.mp4"

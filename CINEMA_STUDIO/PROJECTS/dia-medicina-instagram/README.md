@@ -11,7 +11,7 @@ Proposta criativa completa em [`brief/proposta.md`](brief/proposta.md).
 | Duração | 30 s |
 | Formato | 16:9 — 3840×2160 master · 1920×1080 Instagram |
 | Trilha | Original, sintetizada para o projeto (sem direitos de terceiros) |
-| Status | **v01 renderizada** — aguardando aprovação |
+| Status | **v02 renderizada** — aguardando aprovação |
 
 ## Decisões aprovadas
 - Conceito "o relógio do dia": horários reais (metadados dos arquivos) como tipografia.
@@ -54,3 +54,4 @@ Requisitos: ffmpeg ≥ 6, Python 3 com numpy + scipy, Node 18+, fontes Inter Dis
 | Versão | Data | Mudanças | Aprovado? |
 |---|---|---|---|
 | v01 | 02/11/2026 | Primeira montagem completa; QC ok (720 frames, 30,0 s, −14,6 LUFS, pico −1,4 dBFS, sem quadros pretos acidentais) | aguardando |
+| v02 | 02/11/2026 | Trilha remixada para alto-falante de celular: na v01 ~95% da energia estava abaixo de 250 Hz e o vídeo soava mudo no celular. Graves mais leves, harmônicos no baixo, ostinato na região média, percussão mais presente, EQ de master. Faixa 400 Hz–8 kHz de −27,7 → −21,7 dB. Imagem idêntica à v01. | aguardando |
